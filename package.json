@@ -14,7 +14,10 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "tsc && node dist/index.js",
-    "test:tools": "tsc && node dist/test-harness.js"
+    "test:tools": "tsc && node dist/test-harness.js",
+    "smoke": "tsc && node scripts/mcp-smoke.mjs",
+    "smoke:docker": "node scripts/mcp-smoke.mjs docker run -i --rm -e TOKENOMICS_DATA_SOURCE=synthetic tokenomics-mcp",
+    "docker:build": "docker build -t tokenomics-mcp ."
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
