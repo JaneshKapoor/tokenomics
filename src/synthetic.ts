@@ -36,6 +36,12 @@ interface AgentSpec {
   completionTokenRange: [number, number];
   /** Sample prompt lines this agent tends to send (used for previews). */
   prompts: string[];
+  /**
+   * Team members who use this agent, most-active first. Each request is
+   * attributed to one of them (front-loaded so there's a clear top spender).
+   * All names are invented.
+   */
+  members: string[];
 }
 
 const AGENTS: AgentSpec[] = [
@@ -51,6 +57,7 @@ const AGENTS: AgentSpec[] = [
       "Summarize anomalous CPU spikes across the monitoring fleet and correlate them with recent deploy events",
       "Given these Prometheus series, identify which pods are approaching their memory limits and rank by risk",
     ],
+    members: ["Ava Chen", "Noah Kim"],
   },
   {
     agent_name: "sales-copilot",
@@ -64,6 +71,7 @@ const AGENTS: AgentSpec[] = [
       "Summarize this discovery call transcript into next steps, risks, and the champion's stated priorities",
       "Write three subject-line variants for a re-engagement campaign targeting dormant enterprise accounts",
     ],
+    members: ["Liam Reyes", "Grace Park", "Ava Chen"],
   },
   {
     agent_name: "support-bot",
@@ -77,6 +85,7 @@ const AGENTS: AgentSpec[] = [
       "Explain in plain language why the invoice total differs from the quoted amount for this subscription",
       "Triage this bug report and decide whether it should be escalated to engineering or resolved from the KB",
     ],
+    members: ["Mia Torres", "Diego Flores", "Ethan Novak"],
   },
   {
     agent_name: "deck-generator",
@@ -90,6 +99,7 @@ const AGENTS: AgentSpec[] = [
       "Rewrite this rough outline into a polished board presentation with speaker notes for each slide",
       "Produce an executive summary slide plus three appendix slides from the attached quarterly metrics",
     ],
+    members: ["Sofia Ruiz", "Owen Blake"],
   },
   {
     agent_name: "code-reviewer",
@@ -103,6 +113,7 @@ const AGENTS: AgentSpec[] = [
       "Explain the security implications of this authentication change and suggest safer alternatives",
       "Assess whether this refactor preserves behavior and point out any edge cases the diff misses",
     ],
+    members: ["Priya Nair", "Marcus Lee", "Hana Sato"],
   },
 ];
 
@@ -143,6 +154,21 @@ function pickWeighted(rand: number, weights: Record<string, number>): string {
 
 function intInRange(rand: number, [min, max]: [number, number]): number {
   return Math.floor(min + rand * (max - min + 1));
+}
+
+/**
+ * Pick a team member, front-loaded so earlier members are more active
+ * (weight = length - index). Gives each agent a clear "top spender".
+ */
+function pickMember(rand: number, members: string[]): string {
+  const weights = members.map((_, i) => members.length - i);
+  const total = weights.reduce((s, w) => s + w, 0);
+  let target = rand * total;
+  for (let i = 0; i < members.length; i++) {
+    target -= weights[i];
+    if (target <= 0) return members[i];
+  }
+  return members[members.length - 1];
 }
 
 /** YYYY-MM-DD for a Date in UTC. */
@@ -195,6 +221,7 @@ function generateRecords(endDate: Date): UsageRecord[] {
       for (let i = 0; i < requests; i++) {
         const r = mulberry32(hashSeed(`${dateStr}|${agent.agent_name}|${i}`));
         const model = pickWeighted(r(), agent.modelWeights);
+        const member = pickMember(r(), agent.members);
         const promptTokens = intInRange(r(), agent.promptTokenRange);
         const completionTokens = intInRange(r(), agent.completionTokenRange);
         const cost = costFor(model, promptTokens, completionTokens);
@@ -211,6 +238,7 @@ function generateRecords(endDate: Date): UsageRecord[] {
           timestamp: ts.toISOString(),
           team: agent.team,
           agent_name: agent.agent_name,
+          member,
           model,
           cost_usd: cost,
           prompt_tokens: promptTokens,

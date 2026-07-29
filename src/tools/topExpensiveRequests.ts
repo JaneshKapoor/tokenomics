@@ -8,8 +8,8 @@ import { round2 } from "../util.js";
  */
 export async function getTopExpensiveRequests(
   ds: DataSource,
-  startDate: string,
-  endDate: string,
+  startDate?: string,
+  endDate?: string,
   limit = 10,
 ): Promise<TopExpensiveRequestRow[]> {
   const records = await ds.getUsageRecords(startDate, endDate);

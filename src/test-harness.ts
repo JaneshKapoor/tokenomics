@@ -7,6 +7,7 @@ import { createDataSource } from "./factory.js";
 import { getSpendSummary } from "./tools/spendSummary.js";
 import { getSpendByTeam } from "./tools/spendByTeam.js";
 import { getSpendByAgent } from "./tools/spendByAgent.js";
+import { getSpendByMember } from "./tools/spendByMember.js";
 import { getTopExpensiveRequests } from "./tools/topExpensiveRequests.js";
 import { getModelMix } from "./tools/modelMix.js";
 import { getSpendAnomalies } from "./tools/spendAnomalies.js";
@@ -34,6 +35,8 @@ async function main() {
   show("get_spend_summary (week)", await getSpendSummary(ds, start, end, "week"));
   show("get_spend_by_team", await getSpendByTeam(ds, start, end));
   show("get_spend_by_agent", await getSpendByAgent(ds, start, end));
+  show("get_spend_by_member", await getSpendByMember(ds, start, end));
+  show("get_spend_by_member (no dates -> full window)", await getSpendByMember(ds));
   show("get_top_expensive_requests (limit 5)", await getTopExpensiveRequests(ds, start, end, 5));
   show("get_model_mix", await getModelMix(ds, start, end));
   show("get_spend_anomalies (2.0x)", await getSpendAnomalies(ds, 2.0));

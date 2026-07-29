@@ -8,8 +8,8 @@ import { round2, weekStart } from "../util.js";
  */
 export async function getSpendSummary(
   ds: DataSource,
-  startDate: string,
-  endDate: string,
+  startDate?: string,
+  endDate?: string,
   groupBy: GroupBy = "day",
 ): Promise<SpendSummaryRow[]> {
   const records = await ds.getUsageRecords(startDate, endDate);

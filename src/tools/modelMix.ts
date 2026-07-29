@@ -8,8 +8,8 @@ import { round1, round2 } from "../util.js";
  */
 export async function getModelMix(
   ds: DataSource,
-  startDate: string,
-  endDate: string,
+  startDate?: string,
+  endDate?: string,
 ): Promise<ModelMixRow[]> {
   const records = await ds.getUsageRecords(startDate, endDate);
   const buckets = new Map<string, { request_count: number; total_cost_usd: number }>();

@@ -11,11 +11,12 @@ import { getTopExpensiveRequests } from "./tools/topExpensiveRequests.js";
 import { getModelMix } from "./tools/modelMix.js";
 import { getSpendAnomalies } from "./tools/spendAnomalies.js";
 import { getCostOptimizerSavingsEstimate } from "./tools/costOptimizer.js";
+import { getSpendByMember } from "./tools/spendByMember.js";
 
 /**
  * Tokenomics MCP server — entrypoint.
  *
- * Registers 7 tools over stdio, each a thin wrapper over the active DataSource
+ * Registers 8 tools over stdio, each a thin wrapper over the active DataSource
  * (synthetic by default, prometheus via env). Responses are compact JSON meant
  * to be consumed by an LLM building a dashboard, not rendered directly.
  */
@@ -24,7 +25,7 @@ const ds = createDataSource();
 
 const server = new McpServer({
   name: "tokenomics",
-  version: "0.1.0",
+  version: "0.2.0",
 });
 
 /** Wrap any JSON-serializable result as an MCP text content response. */
@@ -32,16 +33,33 @@ const json = (data: unknown) => ({
   content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }],
 });
 
+// Date params are optional everywhere: when omitted, tools use the full
+// available window (~last 14 days). Telling the model to omit dates it isn't
+// sure of avoids empty results from guessing a window outside the data.
+const startDateSchema = z
+  .string()
+  .optional()
+  .describe(
+    "Start date YYYY-MM-DD (inclusive). OPTIONAL — omit to use the full available window (~last 14 days). Do not guess a date if unsure.",
+  );
+const endDateSchema = z
+  .string()
+  .optional()
+  .describe(
+    "End date YYYY-MM-DD (inclusive). OPTIONAL — omit to use the full available window (~last 14 days). Do not guess a date if unsure.",
+  );
+
 server.registerTool(
   "get_spend_summary",
   {
     title: "Spend summary over time",
     description:
       "Total AI cost and token usage bucketed by day or week over a date range. " +
+      "Dates optional (omit for the full ~14-day window). " +
       "Returns [{ date, total_cost_usd, total_tokens, prompt_tokens, completion_tokens }].",
     inputSchema: {
-      start_date: z.string().describe("Start date, YYYY-MM-DD (inclusive)."),
-      end_date: z.string().describe("End date, YYYY-MM-DD (inclusive)."),
+      start_date: startDateSchema,
+      end_date: endDateSchema,
       group_by: z.enum(["day", "week"]).default("day"),
     },
   },
@@ -55,10 +73,11 @@ server.registerTool(
     title: "Spend by team",
     description:
       "Total cost and tokens grouped by team over a date range, sorted by cost. " +
+      "Dates optional (omit for the full ~14-day window). " +
       "Returns [{ team, total_cost_usd, total_tokens }].",
     inputSchema: {
-      start_date: z.string().describe("Start date, YYYY-MM-DD (inclusive)."),
-      end_date: z.string().describe("End date, YYYY-MM-DD (inclusive)."),
+      start_date: startDateSchema,
+      end_date: endDateSchema,
     },
   },
   async ({ start_date, end_date }) => json(await getSpendByTeam(ds, start_date, end_date)),
@@ -70,10 +89,11 @@ server.registerTool(
     title: "Spend by agent",
     description:
       "Total cost, tokens and request count grouped by agent/project over a date range, " +
-      "sorted by cost. Returns [{ agent_name, total_cost_usd, total_tokens, request_count }].",
+      "sorted by cost. Dates optional (omit for the full ~14-day window). " +
+      "Returns [{ agent_name, total_cost_usd, total_tokens, request_count }].",
     inputSchema: {
-      start_date: z.string().describe("Start date, YYYY-MM-DD (inclusive)."),
-      end_date: z.string().describe("End date, YYYY-MM-DD (inclusive)."),
+      start_date: startDateSchema,
+      end_date: endDateSchema,
     },
   },
   async ({ start_date, end_date }) => json(await getSpendByAgent(ds, start_date, end_date)),
@@ -85,11 +105,12 @@ server.registerTool(
     title: "Top expensive requests",
     description:
       "The most expensive individual requests in a date range, with a short prompt preview " +
-      "(first ~100 chars, never the full prompt). Returns [{ timestamp, agent_name, model, " +
+      "(first ~100 chars, never the full prompt). Dates optional (omit for the full ~14-day " +
+      "window). Returns [{ timestamp, agent_name, model, " +
       "cost_usd, prompt_preview, prompt_tokens, completion_tokens }].",
     inputSchema: {
-      start_date: z.string().describe("Start date, YYYY-MM-DD (inclusive)."),
-      end_date: z.string().describe("End date, YYYY-MM-DD (inclusive)."),
+      start_date: startDateSchema,
+      end_date: endDateSchema,
       limit: z.number().int().positive().default(10),
     },
   },
@@ -103,13 +124,30 @@ server.registerTool(
     title: "Model mix",
     description:
       "Request count, cost and percentage-of-total spend broken down by model, sorted by cost. " +
+      "Dates optional (omit for the full ~14-day window). " +
       "Returns [{ model, request_count, total_cost_usd, pct_of_total }].",
     inputSchema: {
-      start_date: z.string().describe("Start date, YYYY-MM-DD (inclusive)."),
-      end_date: z.string().describe("End date, YYYY-MM-DD (inclusive)."),
+      start_date: startDateSchema,
+      end_date: endDateSchema,
     },
   },
   async ({ start_date, end_date }) => json(await getModelMix(ds, start_date, end_date)),
+);
+
+server.registerTool(
+  "get_spend_by_member",
+  {
+    title: "Spend by team member",
+    description:
+      "Total cost, tokens and request count grouped by team member — i.e. WHO is spending the " +
+      "most on AI — sorted by cost descending. Dates optional (omit for the full ~14-day window). " +
+      "Returns [{ member, team, total_cost_usd, total_tokens, request_count }].",
+    inputSchema: {
+      start_date: startDateSchema,
+      end_date: endDateSchema,
+    },
+  },
+  async ({ start_date, end_date }) => json(await getSpendByMember(ds, start_date, end_date)),
 );
 
 server.registerTool(

@@ -17,6 +17,7 @@ const EXPECTED_TOOLS = [
   "get_spend_summary",
   "get_spend_by_team",
   "get_spend_by_agent",
+  "get_spend_by_member",
   "get_top_expensive_requests",
   "get_model_mix",
   "get_spend_anomalies",

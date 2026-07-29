@@ -5,8 +5,8 @@ import { round2 } from "../util.js";
 /** Total cost + tokens grouped by team, sorted by cost descending. */
 export async function getSpendByTeam(
   ds: DataSource,
-  startDate: string,
-  endDate: string,
+  startDate?: string,
+  endDate?: string,
 ): Promise<SpendByTeamRow[]> {
   const records = await ds.getUsageRecords(startDate, endDate);
   const buckets = new Map<string, SpendByTeamRow>();

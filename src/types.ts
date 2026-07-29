@@ -15,6 +15,8 @@ export interface UsageRecord {
   team: string;
   /** Agent / project that made the call (e.g. "sales-copilot"). */
   agent_name: string;
+  /** Team member the call is attributed to (e.g. "Ava Chen"). */
+  member: string;
   /** Model id (e.g. "claude-haiku-4-5"). */
   model: string;
   /** Total USD cost of this request. */
@@ -44,6 +46,15 @@ export interface SpendByTeamRow {
 /** get_spend_by_agent row. */
 export interface SpendByAgentRow {
   agent_name: string;
+  total_cost_usd: number;
+  total_tokens: number;
+  request_count: number;
+}
+
+/** get_spend_by_member row. */
+export interface SpendByMemberRow {
+  member: string;
+  team: string;
   total_cost_usd: number;
   total_tokens: number;
   request_count: number;

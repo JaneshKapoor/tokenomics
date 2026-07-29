@@ -52,6 +52,7 @@ export class PrometheusDataSource implements DataSource {
   private readonly modelLabel = process.env.TOKENOMICS_MODEL_LABEL ?? "model";
   private readonly sourceLabel = process.env.TOKENOMICS_SOURCE_LABEL ?? "source";
   private readonly teamLabel = process.env.TOKENOMICS_TEAM_LABEL ?? "team";
+  private readonly memberLabel = process.env.TOKENOMICS_MEMBER_LABEL ?? "member";
   private readonly tokenTypeLabel = process.env.TOKENOMICS_TOKENTYPE_LABEL ?? "type";
   private readonly costMetric = process.env.TOKENOMICS_COST_METRIC ?? "llm_cost_total";
   private readonly tokensMetric = process.env.TOKENOMICS_TOKENS_METRIC ?? "llm_tokens_total";
@@ -70,7 +71,7 @@ export class PrometheusDataSource implements DataSource {
     const startS = Math.floor(start / 1000);
     const endS = Math.floor(end / 1000);
 
-    const groupBy = `${this.agentLabel}, ${this.modelLabel}, ${this.sourceLabel}, ${this.teamLabel}`;
+    const groupBy = `${this.agentLabel}, ${this.modelLabel}, ${this.sourceLabel}, ${this.teamLabel}, ${this.memberLabel}`;
     const costQuery = `sum by (${groupBy}) (increase(${this.costMetric}[1d]))`;
     const tokQuery = `sum by (${groupBy}, ${this.tokenTypeLabel}) (increase(${this.tokensMetric}[1d]))`;
 
@@ -95,6 +96,7 @@ export class PrometheusDataSource implements DataSource {
           timestamp: `${dayIso}T12:00:00.000Z`, // bucket midpoint
           team: m[this.teamLabel] || m[this.sourceLabel] || "unknown",
           agent_name: m[this.agentLabel] ?? "unknown",
+          member: m[this.memberLabel] || "unknown",
           model: m[this.modelLabel] ?? "unknown",
           cost_usd: 0,
           prompt_tokens: 0,
