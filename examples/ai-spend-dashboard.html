@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Spend Dashboard — Tokenomics</title>
+<style>
+  :root{
+    color-scheme: light;
+    --page:#f9f9f7; --surface:#fcfcfb;
+    --text-1:#0b0b0b; --text-2:#52514e; --muted:#898781;
+    --grid:#e1e0d9; --baseline:#c3c2b7; --border:rgba(11,11,11,.10);
+    --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4;
+    --good:#0ca30c; --warning:#fab219; --serious:#ec835a; --critical:#d03b3b;
+    --good-ink:#006300;
+    --shadow:0 1px 2px rgba(11,11,11,.04),0 4px 16px rgba(11,11,11,.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:where(:not([data-theme="light"])){
+      color-scheme: dark;
+      --page:#0d0d0d; --surface:#1a1a19;
+      --text-1:#ffffff; --text-2:#c3c2b7; --muted:#898781;
+      --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,.10);
+      --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181;
+      --good-ink:#0ca30c;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --page:#0d0d0d; --surface:#1a1a19;
+    --text-1:#ffffff; --text-2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,.10);
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181;
+    --good-ink:#0ca30c;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.4);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--page); color:var(--text-1);
+    font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased; line-height:1.45;
+    padding:28px 24px 56px;
+  }
+  .wrap{max-width:1180px;margin:0 auto}
+  header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+  h1{font-size:24px;margin:0 0 4px;letter-spacing:-.01em}
+  .sub{color:var(--text-2);font-size:13.5px}
+  .sub b{color:var(--text-1);font-weight:600}
+  .toggle{
+    border:1px solid var(--border);background:var(--surface);color:var(--text-2);
+    border-radius:9px;padding:7px 12px;font-size:13px;cursor:pointer;font-family:inherit;
+    display:inline-flex;align-items:center;gap:7px;box-shadow:var(--shadow)
+  }
+  .toggle:hover{color:var(--text-1)}
+  .grid{display:grid;gap:16px}
+  .kpis{grid-template-columns:repeat(5,1fr);margin-bottom:16px}
+  @media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}}
+  .card{
+    background:var(--surface);border:1px solid var(--border);border-radius:14px;
+    padding:18px 18px 14px;box-shadow:var(--shadow)
+  }
+  .card h2{font-size:13px;font-weight:600;margin:0 0 2px;letter-spacing:.01em}
+  .card .cap{color:var(--muted);font-size:11.5px;margin:0 0 14px}
+  .tile .label{color:var(--text-2);font-size:12px;margin:0 0 8px}
+  .tile .value{font-size:27px;font-weight:650;letter-spacing:-.02em;line-height:1}
+  .tile .delta{font-size:12px;color:var(--text-2);margin-top:7px}
+  .tile .delta.good{color:var(--good-ink);font-weight:600}
+  .tile .delta.warn{color:var(--serious);font-weight:600}
+  .cols{grid-template-columns:1fr 1fr}
+  @media(max-width:820px){.cols{grid-template-columns:1fr}}
+  svg{display:block;width:100%;overflow:visible}
+  .axis{fill:var(--muted);font-size:11px}
+  .axis-tab{fill:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
+  .vlabel{fill:var(--text-1);font-size:11.5px;font-weight:600;font-variant-numeric:tabular-nums}
+  .blabel{fill:var(--text-1);font-size:12px;font-weight:500}
+  .gridline{stroke:var(--grid);stroke-width:1}
+  .baseline{stroke:var(--baseline);stroke-width:1}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{text-align:left;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding:0 10px 8px;border-bottom:1px solid var(--border)}
+  td{padding:9px 10px;border-bottom:1px solid var(--border);color:var(--text-2);vertical-align:top}
+  td.num{text-align:right;font-variant-numeric:tabular-nums;color:var(--text-1);font-weight:600;white-space:nowrap}
+  td .agent{color:var(--text-1);font-weight:600}
+  td .prev{display:block;max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pill{display:inline-block;padding:1px 7px;border-radius:999px;font-size:10.5px;font-weight:600;border:1px solid var(--border);color:var(--text-2)}
+  .status{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .full{grid-column:1/-1}
+  .tip{
+    position:fixed;pointer-events:none;z-index:10;opacity:0;transition:opacity .08s;
+    background:var(--surface);border:1px solid var(--border);border-radius:9px;
+    box-shadow:var(--shadow);padding:8px 10px;font-size:12px;color:var(--text-1);
+    font-variant-numeric:tabular-nums;min-width:120px
+  }
+  .tip .t-row{display:flex;justify-content:space-between;gap:14px}
+  .tip .t-k{color:var(--text-2)}
+  .tip .t-h{font-weight:600;margin-bottom:4px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:11.5px;color:var(--text-2)}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+  footer{margin-top:26px;color:var(--muted);font-size:11.5px;text-align:center}
+  code{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;background:var(--page);padding:1px 5px;border-radius:5px;border:1px solid var(--border)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>AI Spend Dashboard</h1>
+      <div class="sub">Last 14 days · <b id="range"></b> · Powered by <b>Tokenomics MCP</b> tools · synthetic dataset</div>
+    </div>
+    <button class="toggle" id="themeBtn" aria-label="Toggle theme">◐ Theme</button>
+  </header>
+
+  <div class="grid kpis" id="kpis"></div>
+
+  <div class="grid" style="margin-bottom:16px">
+    <div class="card full">
+      <h2>Spend over time</h2>
+      <p class="cap">Daily total cost across all teams (USD)</p>
+      <svg id="lineChart" viewBox="0 0 1100 300" preserveAspectRatio="none" role="img" aria-label="Daily spend line chart"></svg>
+    </div>
+  </div>
+
+  <div class="grid cols" style="margin-bottom:16px">
+    <div class="card">
+      <h2>Spend by team</h2>
+      <p class="cap">Total cost per team, ranked</p>
+      <svg id="teamChart" viewBox="0 0 520 210" role="img" aria-label="Spend by team"></svg>
+    </div>
+    <div class="card">
+      <h2>Spend by agent</h2>
+      <p class="cap">Total cost per agent / project, ranked</p>
+      <svg id="agentChart" viewBox="0 0 520 250" role="img" aria-label="Spend by agent"></svg>
+    </div>
+  </div>
+
+  <div class="grid cols" style="margin-bottom:16px">
+    <div class="card">
+      <h2>Model mix</h2>
+      <p class="cap">Share of total spend by model</p>
+      <svg id="modelChart" viewBox="0 0 520 170" role="img" aria-label="Model mix"></svg>
+      <div class="legend" id="modelLegend"></div>
+    </div>
+    <div class="card">
+      <h2>Spend anomalies</h2>
+      <p class="cap">Agent-days above 1.8× their trailing 7-day average</p>
+      <table id="anomalyTable"><thead><tr><th>Agent</th><th>Date</th><th style="text-align:right">Spend</th><th style="text-align:right">7-day avg</th><th style="text-align:right">Ratio</th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <div class="grid" >
+    <div class="card full">
+      <h2>Top 10 most expensive requests</h2>
+      <p class="cap">Highest-cost individual calls · prompt preview only (first ~100 chars)</p>
+      <table id="topTable"><thead><tr><th>Time (UTC)</th><th>Agent</th><th>Model</th><th style="text-align:right">Cost</th><th>Prompt preview</th><th style="text-align:right">Tokens (in / out)</th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <footer>
+    Generated from live <code>tokenomics</code> MCP tool output · fictional teams &amp; models · figures in USD
+  </footer>
+</div>
+<div class="tip" id="tip"></div>
+
+<script>
+const DATA = {"start":"2026-07-15","end":"2026-07-29","summary":[{"date":"2026-07-16","total_cost_usd":4.32,"total_tokens":746488,"prompt_tokens":515712,"completion_tokens":230776},{"date":"2026-07-17","total_cost_usd":5.9,"total_tokens":805845,"prompt_tokens":552178,"completion_tokens":253667},{"date":"2026-07-18","total_cost_usd":3.57,"total_tokens":355059,"prompt_tokens":240588,"completion_tokens":114471},{"date":"2026-07-19","total_cost_usd":2.67,"total_tokens":339606,"prompt_tokens":230444,"completion_tokens":109162},{"date":"2026-07-20","total_cost_usd":6.64,"total_tokens":806286,"prompt_tokens":558617,"completion_tokens":247669},{"date":"2026-07-21","total_cost_usd":5.64,"total_tokens":826698,"prompt_tokens":562052,"completion_tokens":264646},{"date":"2026-07-22","total_cost_usd":7.11,"total_tokens":765048,"prompt_tokens":523311,"completion_tokens":241737},{"date":"2026-07-23","total_cost_usd":6.63,"total_tokens":784229,"prompt_tokens":530572,"completion_tokens":253657},{"date":"2026-07-24","total_cost_usd":6.48,"total_tokens":800436,"prompt_tokens":548008,"completion_tokens":252428},{"date":"2026-07-25","total_cost_usd":4.39,"total_tokens":557245,"prompt_tokens":378920,"completion_tokens":178325},{"date":"2026-07-26","total_cost_usd":3.24,"total_tokens":373541,"prompt_tokens":253181,"completion_tokens":120360},{"date":"2026-07-27","total_cost_usd":7.08,"total_tokens":820929,"prompt_tokens":570691,"completion_tokens":250238},{"date":"2026-07-28","total_cost_usd":7.31,"total_tokens":743996,"prompt_tokens":502234,"completion_tokens":241762},{"date":"2026-07-29","total_cost_usd":5.99,"total_tokens":788216,"prompt_tokens":549686,"completion_tokens":238530}],"byTeam":[{"team":"Team Orbit","total_cost_usd":32.28,"total_tokens":1805165},{"team":"Team Quasar","total_cost_usd":21.28,"total_tokens":2929618},{"team":"Team Nebula","total_cost_usd":17.12,"total_tokens":2875007},{"team":"Team Falcon","total_cost_usd":6.29,"total_tokens":1903832}],"byAgent":[{"agent_name":"deck-generator","total_cost_usd":32.28,"total_tokens":1805165,"request_count":216},{"agent_name":"code-reviewer","total_cost_usd":21.28,"total_tokens":2929618,"request_count":640},{"agent_name":"sales-copilot","total_cost_usd":10.7,"total_tokens":1683968,"request_count":1058},{"agent_name":"clustering-monitor","total_cost_usd":6.42,"total_tokens":1191039,"request_count":546},{"agent_name":"support-bot","total_cost_usd":6.29,"total_tokens":1903832,"request_count":1808}],"modelMix":[{"model":"claude-opus-4-8","request_count":259,"total_cost_usd":41.37,"pct_of_total":53.8},{"model":"claude-sonnet-5","request_count":1320,"total_cost_usd":25.27,"pct_of_total":32.8},{"model":"claude-haiku-4-5","request_count":2689,"total_cost_usd":10.32,"pct_of_total":13.4}],"topExpensive":[{"timestamp":"2026-07-23T18:11:55.000Z","agent_name":"deck-generator","model":"claude-opus-4-8","cost_usd":0.49,"prompt_preview":"Rewrite this rough outline into a polished board presentation with speaker notes for each slide","prompt_tokens":8703,"completion_tokens":4818},{"timestamp":"2026-07-24T11:01:01.000Z","agent_name":"deck-generator","model":"claude-opus-4-8","cost_usd":0.47,"prompt_preview":"Produce an executive summary slide plus three appendix slides from the attached quarterly metrics","prompt_tokens":7332,"completion_tokens":4833},{"timestamp":"2026-07-25T13:42:28.000Z","agent_name":"deck-generator","model":"claude-opus-4-8","cost_usd":0.46,"prompt_preview":"Rewrite this rough outline into a polished board presentation with speaker notes for each slide","prompt_tokens":6420,"completion_tokens":4909},{"timestamp":"2026-07-16T12:08:53.000Z","agent_name":"deck-generator","model":"claude-opus-4-8","cost_usd":0.44,"prompt_preview":"Produce an executive summary slide plus three appendix slides from the attached quarterly metrics","prompt_tokens":6200,"completion_tokens":4622},{"timestamp":"2026-07-29T18:10:45.000Z","agent_name":"deck-generator","model":"claude-opus-4-8","cost_usd":0.44,"prompt_preview":"Rewrite this rough outline into a polished board presentation with speaker notes for each slide","prompt_tokens":8905,"completion_tokens":4046},{"timestamp":"2026-07-28T14:36:37.000Z","agent_name":"deck-generator","model":"claude-opus-4-8","cost_usd":0.43,"prompt_preview":"Produce an executive summary slide plus three appendix slides from the attached quarterly metrics","prompt_tokens":7629,"completion_tokens":4241},{"timestamp":"2026-07-25T13:07:18.000Z","agent_name":"deck-generator","model":"claude-opus-4-8","cost_usd":0.43,"prompt_preview":"Produce an executive summary slide plus three appendix slides from the attached quarterly metrics","prompt_tokens":3508,"completion_tokens":4979},{"timestamp":"2026-07-22T15:22:03.000Z","agent_name":"deck-generator","model":"claude-opus-4-8","cost_usd":0.42,"prompt_preview":"Generate a 20-slide investor deck for a Series B fintech, including market sizing and a competitive ","prompt_tokens":6315,"completion_tokens":4393},{"timestamp":"2026-07-29T16:49:05.000Z","agent_name":"deck-generator","model":"claude-opus-4-8","cost_usd":0.42,"prompt_preview":"Rewrite this rough outline into a polished board presentation with speaker notes for each slide","prompt_tokens":8342,"completion_tokens":3969},{"timestamp":"2026-07-20T12:23:56.000Z","agent_name":"deck-generator","model":"claude-opus-4-8","cost_usd":0.42,"prompt_preview":"Rewrite this rough outline into a polished board presentation with speaker notes for each slide","prompt_tokens":7238,"completion_tokens":4135}],"anomalies":[{"agent_name":"clustering-monitor","date":"2026-07-25","spend_usd":0.97,"seven_day_avg_usd":0.4,"ratio":2.44},{"agent_name":"code-reviewer","date":"2026-07-22","spend_usd":2.68,"seven_day_avg_usd":1.39,"ratio":1.93},{"agent_name":"code-reviewer","date":"2026-07-20","spend_usd":1.98,"seven_day_avg_usd":1.04,"ratio":1.91}],"optimizer":{"current_cost_usd":76.97,"estimated_savings_usd":5.3,"pct_savings":6.9,"assumption":"Requests with prompt_tokens < 1000 re-priced at claude-haiku-4-5 rates."}};
+
+const $ = (s)=>document.querySelector(s);
+const tip = $("#tip");
+const usd = (n)=> "$"+n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+const usd0 = (n)=> "$"+n.toLocaleString(undefined,{maximumFractionDigits:0});
+const int = (n)=> n.toLocaleString();
+const tok = (n)=> (n/1e6).toFixed(2)+"M";
+const cvar = (name)=> getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+function showTip(html, x, y){
+  tip.innerHTML = html;
+  tip.style.opacity = 1;
+  const r = tip.getBoundingClientRect();
+  let left = x + 14, top = y + 14;
+  if(left + r.width > window.innerWidth - 8) left = x - r.width - 14;
+  if(top + r.height > window.innerHeight - 8) top = y - r.height - 14;
+  tip.style.left = left+"px"; tip.style.top = top+"px";
+}
+function hideTip(){ tip.style.opacity = 0; }
+
+/* ---------- KPIs ---------- */
+function renderKPIs(){
+  const total = DATA.optimizer.current_cost_usd;
+  const tokens = DATA.byTeam.reduce((s,t)=>s+t.total_tokens,0);
+  const reqs = DATA.byAgent.reduce((s,a)=>s+a.request_count,0);
+  const avg = total / DATA.summary.length;
+  const peak = DATA.summary.reduce((m,d)=> d.total_cost_usd>m.total_cost_usd?d:m, DATA.summary[0]);
+  const tiles = [
+    {label:"Total spend", value: usd(total), delta:`avg ${usd(avg)}/day`, cls:""},
+    {label:"Total tokens", value: tok(tokens), delta:`${int(reqs)} requests`, cls:""},
+    {label:"Peak day", value: usd(peak.total_cost_usd), delta: peak.date, cls:""},
+    {label:"Potential savings", value: usd(DATA.optimizer.estimated_savings_usd), delta:`${DATA.optimizer.pct_savings}% via cheaper model`, cls:"good"},
+    {label:"Anomalies flagged", value: String(DATA.anomalies.length), delta:"≥1.8× 7-day avg", cls:"warn"},
+  ];
+  $("#kpis").innerHTML = tiles.map(t=>`
+    <div class="card tile">
+      <p class="label">${t.label}</p>
+      <div class="value">${t.value}</div>
+      <div class="delta ${t.cls}">${t.delta}</div>
+    </div>`).join("");
+}
+
+/* ---------- Line: spend over time ---------- */
+function renderLine(){
+  const svg = $("#lineChart");
+  const W=1100, H=300, L=52, R=16, T=16, B=34;
+  const d = DATA.summary;
+  const max = Math.ceil(Math.max(...d.map(x=>x.total_cost_usd)));
+  const iw = W-L-R, ih = H-T-B;
+  const X = i => L + (d.length===1?iw/2: i*iw/(d.length-1));
+  const Y = v => T + ih - (v/max)*ih;
+  let g="";
+  // gridlines + y labels
+  const ticks=4;
+  for(let t=0;t<=ticks;t++){
+    const v = max*t/ticks, y=Y(v);
+    g+=`<line class="gridline" x1="${L}" y1="${y}" x2="${W-R}" y2="${y}"/>`;
+    g+=`<text class="axis-tab" x="${L-8}" y="${y+4}" text-anchor="end">$${v.toFixed(0)}</text>`;
+  }
+  // x labels (every other)
+  d.forEach((p,i)=>{ if(i%2===0||i===d.length-1){
+    g+=`<text class="axis-tab" x="${X(i)}" y="${H-12}" text-anchor="middle">${p.date.slice(5)}</text>`;
+  }});
+  // area + line
+  const pts = d.map((p,i)=>[X(i),Y(p.total_cost_usd)]);
+  const line = pts.map((p,i)=>(i?"L":"M")+p[0]+" "+p[1]).join(" ");
+  const area = "M"+pts[0][0]+" "+Y(0)+" "+pts.map(p=>"L"+p[0]+" "+p[1]).join(" ")+" L"+pts[pts.length-1][0]+" "+Y(0)+" Z";
+  g+=`<path d="${area}" fill="var(--s1)" opacity=".08"/>`;
+  g+=`<path d="${line}" fill="none" stroke="var(--s1)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  pts.forEach((p,i)=> g+=`<circle cx="${p[0]}" cy="${p[1]}" r="3" fill="var(--surface)" stroke="var(--s1)" stroke-width="2"/>`);
+  // crosshair overlay
+  g+=`<line id="lc-cross" class="baseline" x1="0" y1="${T}" x2="0" y2="${T+ih}" style="opacity:0"/>`;
+  g+=`<circle id="lc-dot" r="4.5" fill="var(--s1)" stroke="var(--surface)" stroke-width="2" style="opacity:0"/>`;
+  g+=`<rect x="${L}" y="${T}" width="${iw}" height="${ih}" fill="transparent" id="lc-hit"/>`;
+  svg.innerHTML=g;
+  const hit=$("#lc-hit"), cross=$("#lc-cross"), dot=$("#lc-dot");
+  hit.addEventListener("mousemove",e=>{
+    const r=svg.getBoundingClientRect();
+    const px=(e.clientX-r.left)/r.width*W;
+    let i=Math.round((px-L)/(iw/(d.length-1))); i=Math.max(0,Math.min(d.length-1,i));
+    const p=d[i], x=X(i), y=Y(p.total_cost_usd);
+    cross.setAttribute("x1",x);cross.setAttribute("x2",x);cross.style.opacity=.6;
+    dot.setAttribute("cx",x);dot.setAttribute("cy",y);dot.style.opacity=1;
+    showTip(`<div class="t-h">${p.date}</div>
+      <div class="t-row"><span class="t-k">Cost</span><b>${usd(p.total_cost_usd)}</b></div>
+      <div class="t-row"><span class="t-k">Tokens</span><b>${int(p.total_tokens)}</b></div>
+      <div class="t-row"><span class="t-k">In / Out</span><b>${int(p.prompt_tokens)} / ${int(p.completion_tokens)}</b></div>`, e.clientX, e.clientY);
+  });
+  hit.addEventListener("mouseleave",()=>{cross.style.opacity=0;dot.style.opacity=0;hideTip();});
+}
+
+/* ---------- Horizontal bars (single hue) ---------- */
+function renderBars(svgSel, rows, opts){
+  const svg=$(svgSel);
+  const W=520, rowH=opts.rowH||34, padT=6, padB=18, labelW=opts.labelW||128, valW=64;
+  const H=padT+padB+rows.length*rowH;
+  svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
+  const bx=labelW, bw=W-labelW-valW-10;
+  const max=Math.max(...rows.map(opts.value));
+  let g="";
+  rows.forEach((r,i)=>{
+    const y=padT+i*rowH, bh=Math.min(18,rowH-14), cy=y+(rowH-padB/2)/2;
+    const w=Math.max(2,(opts.value(r)/max)*bw);
+    g+=`<text class="blabel" x="${bx-10}" y="${cy+4}" text-anchor="end">${opts.label(r)}</text>`;
+    g+=`<rect x="${bx}" y="${cy-bh/2}" width="${bw}" height="${bh}" rx="4" fill="var(--grid)" opacity=".5"/>`;
+    g+=`<rect class="bar" data-i="${i}" x="${bx}" y="${cy-bh/2}" width="${w}" height="${bh}" rx="4" fill="var(--s1)"/>`;
+    g+=`<text class="vlabel" x="${bx+w+8}" y="${cy+4}">${opts.vlabel(r)}</text>`;
+  });
+  svg.innerHTML=g;
+  svg.querySelectorAll(".bar").forEach(b=>{
+    b.addEventListener("mousemove",e=>{ b.setAttribute("fill","var(--s3)"); showTip(opts.tip(rows[b.dataset.i]), e.clientX, e.clientY); });
+    b.addEventListener("mouseleave",()=>{ b.setAttribute("fill","var(--s1)"); hideTip(); });
+  });
+}
+
+/* ---------- Model mix (categorical) ---------- */
+function renderModel(){
+  const svg=$("#modelChart"), rows=DATA.modelMix;
+  const cols=["var(--s1)","var(--s2)","var(--s3)"];
+  const W=520,rowH=44,padT=8,labelW=150,valW=90,bx=150,bw=W-labelW-valW;
+  const H=padT+rows.length*rowH;
+  svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
+  const max=Math.max(...rows.map(r=>r.pct_of_total));
+  let g="";
+  rows.forEach((r,i)=>{
+    const y=padT+i*rowH+8, bh=20, w=Math.max(2,(r.pct_of_total/max)*bw);
+    g+=`<text class="blabel" x="${bx-10}" y="${y+15}" text-anchor="end" style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px">${r.model}</text>`;
+    g+=`<rect x="${bx}" y="${y}" width="${bw}" height="${bh}" rx="4" fill="var(--grid)" opacity=".5"/>`;
+    g+=`<rect class="mbar" data-i="${i}" x="${bx}" y="${y}" width="${w}" height="${bh}" rx="4" fill="${cols[i]}"/>`;
+    g+=`<text class="vlabel" x="${bx+w+8}" y="${y+15}">${r.pct_of_total}% · ${usd(r.total_cost_usd)}</text>`;
+  });
+  svg.innerHTML=g;
+  svg.querySelectorAll(".mbar").forEach(b=>{
+    const r=rows[b.dataset.i];
+    b.addEventListener("mousemove",e=>showTip(`<div class="t-h">${r.model}</div>
+      <div class="t-row"><span class="t-k">Cost</span><b>${usd(r.total_cost_usd)}</b></div>
+      <div class="t-row"><span class="t-k">Share</span><b>${r.pct_of_total}%</b></div>
+      <div class="t-row"><span class="t-k">Requests</span><b>${int(r.request_count)}</b></div>`, e.clientX,e.clientY));
+    b.addEventListener("mouseleave",hideTip);
+  });
+  $("#modelLegend").innerHTML = rows.map((r,i)=>`<span><i style="background:${cols[i]}"></i>${r.model}</span>`).join("");
+}
+
+/* ---------- Tables ---------- */
+function renderTables(){
+  const status = (ratio)=> ratio>=2 ? ["var(--serious)","serious"] : ["var(--warning)","elevated"];
+  $("#anomalyTable tbody").innerHTML = DATA.anomalies.map(a=>{
+    const [c] = status(a.ratio);
+    return `<tr>
+      <td><span class="agent">${a.agent_name}</span></td>
+      <td>${a.date}</td>
+      <td class="num">${usd(a.spend_usd)}</td>
+      <td class="num" style="color:var(--text-2);font-weight:400">${usd(a.seven_day_avg_usd)}</td>
+      <td class="num"><span class="status"><span class="dot" style="background:${c}"></span>${a.ratio.toFixed(2)}×</span></td>
+    </tr>`;}).join("");
+  const fmtTime = (ts)=> ts.slice(0,10)+" "+ts.slice(11,16);
+  $("#topTable tbody").innerHTML = DATA.topExpensive.map(r=>`<tr>
+      <td style="white-space:nowrap">${fmtTime(r.timestamp)}</td>
+      <td><span class="agent">${r.agent_name}</span></td>
+      <td><span class="pill">${r.model}</span></td>
+      <td class="num">${usd(r.cost_usd)}</td>
+      <td><span class="prev" title="${r.prompt_preview.replace(/"/g,'&quot;')}">${r.prompt_preview}</span></td>
+      <td class="num" style="font-weight:400;color:var(--text-2)">${int(r.prompt_tokens)} / ${int(r.completion_tokens)}</td>
+    </tr>`).join("");
+}
+
+/* ---------- Theme toggle ---------- */
+$("#themeBtn").addEventListener("click",()=>{
+  const cur=document.documentElement.getAttribute("data-theme");
+  const dark = cur ? cur==="dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  document.documentElement.setAttribute("data-theme", dark?"light":"dark");
+});
+
+/* ---------- Boot ---------- */
+$("#range").textContent = DATA.summary[0].date + " → " + DATA.summary[DATA.summary.length-1].date;
+renderKPIs();
+renderLine();
+renderBars("#teamChart", DATA.byTeam, {
+  rowH:44, labelW:128,
+  label:r=>r.team, value:r=>r.total_cost_usd, vlabel:r=>usd(r.total_cost_usd),
+  tip:r=>`<div class="t-h">${r.team}</div>
+    <div class="t-row"><span class="t-k">Cost</span><b>${usd(r.total_cost_usd)}</b></div>
+    <div class="t-row"><span class="t-k">Tokens</span><b>${int(r.total_tokens)}</b></div>`
+});
+renderBars("#agentChart", DATA.byAgent, {
+  rowH:44, labelW:138,
+  label:r=>r.agent_name, value:r=>r.total_cost_usd, vlabel:r=>usd(r.total_cost_usd),
+  tip:r=>`<div class="t-h">${r.agent_name}</div>
+    <div class="t-row"><span class="t-k">Cost</span><b>${usd(r.total_cost_usd)}</b></div>
+    <div class="t-row"><span class="t-k">Requests</span><b>${int(r.request_count)}</b></div>
+    <div class="t-row"><span class="t-k">Tokens</span><b>${int(r.total_tokens)}</b></div>`
+});
+renderModel();
+renderTables();
+window.addEventListener("resize",()=>{renderLine();});
+</script>
+</body>
+</html>
