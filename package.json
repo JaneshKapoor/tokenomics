@@ -1,6 +1,6 @@
 {
   "name": "tokenomics-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Tokenomics — MCP server exposing AI cost/token usage data (spend by team/agent, top expensive requests, model mix, anomaly flags) as structured tools.",
   "license": "MIT",
   "type": "module",

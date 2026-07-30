@@ -42,7 +42,7 @@ async function main() {
   show("get_spend_anomalies (2.0x)", await getSpendAnomalies(ds, 2.0));
   show("get_cost_optimizer_savings_estimate", await getCostOptimizerSavingsEstimate(ds));
 
-  console.log("\nAll 7 tools executed successfully.");
+  console.log("\nAll 8 tools executed successfully.");
 }
 
 main().catch((err) => {
