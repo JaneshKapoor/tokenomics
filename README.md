@@ -27,6 +27,27 @@ Archestra from a prompt.
 
 ---
 
+## Demo
+
+![AI Spend Dashboard rendered from Tokenomics tool output](examples/dashboard-preview.jpg)
+
+The dashboard above is produced entirely from this server's tool output — KPI
+tiles, spend-over-time, spend by team / **team member** ("who's spending the
+most on AI") / agent, model mix, top expensive requests, and anomaly flags.
+
+- **In Archestra (the intended path):** register the server (below), open
+  **Apps → Create**, and prompt: *"Build an AI spend dashboard using the
+  tokenomics tools — call them with no date arguments, then show KPI tiles, a
+  daily-spend chart, a 'who's spending the most' table, spend by team and
+  agent, model mix, top expensive requests, and an anomalies panel."* Archestra
+  calls the tools and renders the UI in chat — no hand-written frontend.
+- **Standalone (zero setup):** a self-contained, static rendering of the same
+  tool output lives at [`examples/ai-spend-dashboard.html`](examples/ai-spend-dashboard.html)
+  — open it in any browser (inline SVG charts, light/dark, no dependencies). It
+  is generated from live tool output, so every number traces back to a tool call.
+
+---
+
 ## What it provides
 
 Eight tools, all returning compact JSON meant to be consumed by an LLM:
